@@ -1,0 +1,78 @@
+import pandas as pd
+import numpy as np
+import seaborn as sns
+import matplotlib.pyplot as plt
+
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LogisticRegression
+from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import (
+    confusion_matrix, accuracy_score, precision_score,
+    recall_score, f1_score, roc_curve, auc, ConfusionMatrixDisplay
+)
+
+#load dataset
+df=pd.read_csv('/content/drive/....../..../diabetes.csv')
+df.head()
+
+print(df.info())
+print(df.describe())
+
+# Assuming 'Outcome' is the target (common in diabetes datasets)
+target_col = 'Outcome'
+
+# Features and target
+X = df.drop(target_col, axis=1)
+y = df[target_col]
+
+# Feature scaling
+scaler = StandardScaler()
+X_scaled = scaler.fit_transform(X)
+
+# Train/test split
+X_train, X_test, y_train, y_test = train_test_split(
+    X_scaled, y, test_size=0.2, random_state=42
+)
+
+# Logistic Regression model
+model = LogisticRegression()
+model.fit(X_train, y_train)
+
+# Predictions
+y_pred = model.predict(X_test)
+y_proba = model.predict_proba(X_test)[:, 1]
+
+# Evaluation
+cm = confusion_matrix(y_test, y_pred)
+acc = accuracy_score(y_test, y_pred)
+prec = precision_score(y_test, y_pred)
+rec = recall_score(y_test, y_pred)
+f1 = f1_score(y_test, y_pred)
+
+print("Confusion Matrix:\n", cm)
+print(f"Accuracy:  {acc:.2f}")
+print(f"Precision: {prec:.2f}")
+print(f"Recall:    {rec:.2f}")
+print(f"F1 Score:  {f1:.2f}")
+
+
+# Plotting the cofusion matrix
+disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=["Non-Diabetic", "Diabetic"])
+disp.plot(cmap='Blues')
+plt.title("Confusion Matrix")
+plt.grid(False)
+plt.show()
+
+# Plotting the ROC Curve & AUC
+fpr, tpr, _ = roc_curve(y_test, y_proba)
+roc_auc = auc(fpr, tpr)
+
+plt.figure(figsize=(8,6))
+plt.plot(fpr, tpr, label=f"AUC = {roc_auc:.2f}")
+plt.plot([0, 1], [0, 1], linestyle='--', color='gray')
+plt.xlabel("False Positive Rate")
+plt.ylabel("True Positive Rate")
+plt.title("ROC Curve")
+plt.legend(loc="lower right")
+plt.grid(True)
+plt.show()
