@@ -1,0 +1,63 @@
+from google.colab import drive
+drive.mount('/content/drive')
+
+# importing the libraries
+import pandas as pd
+import numpy as np
+import seaborn as sns
+
+from sklearn.impute import SimpleImputer
+from sklearn.preprocessing import LabelEncoder, OneHotEncoder, StandardScaler, MinMaxScaler
+from sklearn.model_selection import train_test_split
+
+print("Dataset information:")
+df.info()
+print("\n Summary:")
+df.describe()
+print("\nMissing values in column:")
+df.isnull().sum()
+
+missing_col = df.isnull().sum()
+missing_col = missing_col[missing_col > 0]
+print("Columns with missing values:\n", missing_col)
+
+if 'deck' in df.columns:
+    df.drop('deck', axis=1, inplace=True)
+
+if 'age' in df.columns:
+    age_imputer = SimpleImputer(strategy='mean')
+    df['age'] = age_imputer.fit_transform(df[['age']])
+
+if 'embarked' in df.columns:
+    embarked_imputer = SimpleImputer(strategy='most_frequent')
+    df['embarked'] = embarked_imputer.fit_transform(df[['embarked']])
+
+categorical_cols = df.select_dtypes(include=['object', 'category']).columns
+print("Categorical columns of dataset:\n", categorical_cols)
+
+#Label Encoding
+le = LabelEncoder()
+if 'class' in df.columns:
+    df['class'] = le.fit_transform(df['class'])
+
+# One hot encoding
+df = pd.get_dummies(df, columns=['Sex', 'Embarked'], drop_first=True)
+
+# Applying normalization/standardization
+numerical_cols = df.select_dtypes(include=['int64', 'float64']).columns
+print("Numerical columns:\n", numerical_cols)
+
+# using the StandardScaler
+scaler = StandardScaler()
+df[numerical_cols] = scaler.fit_transform(df[numerical_cols])
+
+# splitting the dataset
+X = df.drop('Survived', axis=1)
+y = df['Survived']
+
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.3, random_state=42, stratify=y
+)
+
+
+
