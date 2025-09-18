@@ -1,0 +1,67 @@
+from google.colab import drive
+drive.mount('/content/drive')
+
+#import libraries
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import graphviz
+
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score
+from sklearn.tree import export_graphviz, plot_tree
+from sklearn.preprocessing import LabelEncoder
+# load the dataset
+df=pd.read_csv('/content/drive/MyDrive/ML dataset/loan_data.csv')
+df.head()
+print(df.info())
+print(df.describe())
+
+#finding the missing values(categorical values)
+df.fillna(df.mode().iloc[0], inplace=True)
+
+le = LabelEncoder()
+# Identify categorical columns
+cat_cols = df.select_dtypes(include='object').columns
+for col in cat_cols:
+    df[col] = le.fit_transform(df[col])
+
+# split data into train and test data
+X = df.drop('loan_status', axis=1)
+y = df['loan_status']
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+df.head()
+
+clf_no_prune = DecisionTreeClassifier(random_state=42)
+clf_no_prune.fit(X_train, y_train)
+
+#visualize the tree structure
+plt.figure(figsize=(15,10))
+plot_tree(clf_no_prune, filled=True, feature_names=X.columns, class_names=['NO','YES'])
+plt.title("Descion tree without pruning")
+plt.show()
+
+clf_pruned = DecisionTreeClassifier(max_depth=4, min_samples_leaf=10, random_state=42)
+clf_pruned.fit(X_train, y_train)
+
+#visualize the tree structure
+plt.figure(figsize=(15,10))
+plot_tree(clf_pruned, filled=True, feature_names=X.columns, class_names=['No', 'Yes'])
+plt.title("Decision Tree With Pruning")
+plt.show()
+
+#Comparing performance
+y_pred_no_prune = clf_no_prune.predict(X_test)
+y_pred_pruned = clf_pruned.predict(X_test)
+
+acc_no_prune = accuracy_score(y_test, y_pred_no_prune)
+acc_pruned = accuracy_score(y_test, y_pred_pruned)
+print(f"Accuracy without pruning: {acc_no_prune:.2f}")
+print(f"Accuracy with pruning   : {acc_pruned:.2f}")
+
+#Feature importance
+print("\nFeature Importances (Pruned Tree):")
+for name, importance in zip(X.columns, clf_pruned.feature_importances_):
+    print(f"{name}: {importance:.4f}")
+
