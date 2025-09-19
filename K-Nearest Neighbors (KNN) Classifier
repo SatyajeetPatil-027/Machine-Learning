@@ -1,0 +1,152 @@
+from google.colab import drive
+drive.mount('/content/drive')
+
+#import neccessary libraries
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import accuracy_score
+from sklearn.metrics import confusion_matrix
+from sklearn.model_selection import train_test_split
+
+#load the dataset
+df=pd.read_csv('/content/drive/MyDrive/ML dataset/iris_knn.csv')
+df.head()
+
+print(df.describe())
+print(df.info())
+df=pd.DataFrame(df)
+
+df = pd.DataFrame(df, columns=['sepal-length', 'sepal-width', 'petal-length', 'petal-width'])
+scaler = StandardScaler()
+df_scaled = scaler.fit_transform(df)
+
+# Display the first few rows of the scaled DataFrame
+df_scaled = pd.DataFrame(df_scaled, columns=df.columns)
+print(df_scaled.head())
+
+#split data into train and test set
+from sklearn.model_selection import train_test_split
+
+# Target labels from iris dataset
+y = pd.read_csv('/content/drive/MyDrive/ML dataset/iris_knn.csv')['species']
+
+# Split the scaled features and target into training and testing sets
+X_train, X_test, y_train, y_test = train_test_split(df_scaled, y, test_size=0.2, random_state=42)
+
+# Check the shape of the splits
+print(f"X_train shape: {X_train.shape}")
+print(f"X_test shape: {X_test.shape}")
+print(f"y_train shape: {y_train.shape}")
+print(f"y_test shape: {y_test.shape}")
+
+accuracies = []
+
+# Try K values from 1 to 20
+for k in range(1, 21):
+    knn = KNeighborsClassifier(n_neighbors=k)
+
+    # Train the model on the training data
+    knn.fit(X_train, y_train)
+
+    # Predict on the test data
+    y_pred = knn.predict(X_test)
+
+    acc = accuracy_score(y_test, y_pred)
+    accuracies.append(acc)
+
+    print(f"K={k}, Accuracy={acc:.4f}")
+
+# Optional: Plotting K vs Accuracy
+plt.figure(figsize=(10,6))
+plt.plot(range(1, 21), accuracies, marker='o')
+plt.title('K Value vs Test Set Accuracy')
+plt.xlabel('Number of Neighbors: K')
+plt.ylabel('Accuracy')
+plt.xticks(range(1, 21))
+plt.grid(True)
+plt.show()
+
+from sklearn.decomposition import PCA
+from sklearn.preprocessing import LabelEncoder
+import matplotlib.patches as mpatches
+
+# Reduce dimensions for visualization
+pca = PCA(n_components=2)
+X_train_2d = pca.fit_transform(X_train)
+
+# Encode the target variable
+le = LabelEncoder()
+y_train_encoded = le.fit_transform(y_train)
+
+# You can change this value to experiment with different k values
+k_optimal = 5
+knn = KNeighborsClassifier(n_neighbors=k_optimal)
+knn.fit(X_train_2d, y_train_encoded) # Use encoded target variable
+
+# Define the min and max values of the grid with some padding
+x_min, x_max = X_train_2d[:, 0].min() - 1, X_train_2d[:, 0].max() + 1
+y_min, y_max = X_train_2d[:, 1].min() - 1, X_train_2d[:, 1].max() + 1
+
+# Create meshgrid with step size 0.01
+xx, yy = np.meshgrid(np.arange(x_min, x_max, 0.01),np.arange(y_min, y_max, 0.01))
+
+# Flatten the grid to pass into predict
+grid_points = np.c_[xx.ravel(), yy.ravel()]
+Z = knn.predict(grid_points)
+
+# Reshape the predictions back to the shape of meshgrid
+Z = Z.reshape(xx.shape)
+
+plt.figure(figsize=(10, 6))
+
+# Plot the decision boundary by assigning a color to each point in the meshgrid
+plt.contourf(xx, yy, Z, alpha=0.3, cmap=plt.cm.Paired)
+
+# Plot training points
+scatter = plt.scatter(X_train_2d[:, 0], X_train_2d[:, 1], c=y_train_encoded, edgecolor='k', cmap=plt.cm.Paired) # Use encoded target variable for coloring
+
+plt.xlabel('Principal Component 1')
+plt.ylabel('Principal Component 2')
+plt.title(f'KNN Decision Boundary (k={k_optimal})')
+
+# Create legend handles and labels
+legend_handles = []
+for i, class_name in enumerate(le.classes_):
+    legend_handles.append(mpatches.Patch(color=plt.cm.Paired(i), label=class_name))
+
+plt.legend(handles=legend_handles)
+plt.show()
+
+# Find the index of the best accuracy and convert to K value
+best_k = accuracies.index(max(accuracies)) + 1
+print(f"Best K: {best_k} with accuracy {max(accuracies):.4f}")
+
+knn_optimal = KNeighborsClassifier(n_neighbors=best_k)
+knn_optimal.fit(X_train, y_train)
+y_pred = knn_optimal.predict(X_test)
+
+from sklearn.metrics import confusion_matrix, accuracy_score
+import seaborn as sns
+import matplotlib.pyplot as plt
+
+# Confusion matrix
+cm = confusion_matrix(y_test, y_pred)
+
+# Accuracy
+acc = accuracy_score(y_test, y_pred)
+
+print(f"Accuracy with K={best_k}: {acc:.4f}")
+
+# Plot confusion matrix
+plt.figure(figsize=(6,5))
+sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=y.unique(), yticklabels=y.unique())
+plt.xlabel('Predicted')
+plt.ylabel('Actual')
+plt.title(f'Confusion Matrix for K={best_k}')
+plt.show()
+
