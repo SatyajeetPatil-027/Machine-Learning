@@ -1,0 +1,53 @@
+from google.colab import drive
+drive.mount('/content/drive')
+
+import numpy as np
+import pandas as pd
+import string
+import nltk
+from nltk.corpus import stopwords
+from nltk.tokenize import word_tokenize
+from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
+from sklearn.naive_bayes import MultinomialNB
+from sklearn.metrics import accuracy_score, classification_report
+from sklearn.model_selection import train_test_split
+
+df=pd.read_csv('/content/drive/MyDrive/ML dataset/Spam_SMS.csv')
+df.head()
+
+print(df.info())
+print(df.describe())
+
+def clean_text(text):
+    text = text.lower()
+    text = text.translate(str.maketrans('', '', string.punctuation))  # remove punctuation
+    return text
+# Replace 'Message' with the actual name of your text column
+df['cleaned_text'] = df['Message'].apply(clean_text)
+print(df[['cleaned_text']].head())
+
+nltk.download('punkt_tab') # Download punkt_tab resource
+def tokenize_text(text):
+    return word_tokenize(text)
+# Apply tokenization to 'cleaned_text' column
+
+df['tokens'] = df['cleaned_text'].apply(tokenize_text)
+# View the result
+print(df[['tokens']].head())
+
+nltk.download('stopwords')
+stop_words = set(stopwords.words('english'))
+def remove_stopwords(tokens):
+    return [word for word in tokens if word not in stop_words]
+
+# Apply the stopwords removal to the 'tokens' column
+df['tokens_no_stopwords'] = df['tokens'].apply(remove_stopwords)
+
+# View the result
+print(df[['tokens_no_stopwords']].head())
+
+tfidf = TfidfVectorizer(stop_words='english')
+
+# Fit the vectorizer and transform the text data into TF-IDF features
+X_tfidf = tfidf.fit_transform(df['Message'])
+print("Shape of TF-IDF matrix:", X_tfidf.shape)
