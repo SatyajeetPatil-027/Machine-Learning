@@ -1,0 +1,75 @@
+#K-Means Clustering 
+
+from google.colab import drive
+drive.mount('/content/drive')
+
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.preprocessing import StandardScaler
+from sklearn.cluster import KMeans
+from sklearn.decomposition import PCA
+
+#Load dataset
+
+df=pd.read_csv('/content/drive/MyDrive/ML dataset/customer_data.csv')
+df.head()
+
+df.info()
+df.describe()
+
+#Data Preprocessing
+
+# Drop rows with missing values
+df_cleaned = df.dropna()
+
+# Drop irrelevant columns for clustering
+df_processed = df_cleaned.drop(['Unnamed: 0', 'ID', 'Segmentation'], axis=1)
+
+# Handle categorical variables using one-hot encoding
+df_processed = pd.get_dummies(df_processed, columns=['Gender', 'Ever_Married', 'Graduated', 'Profession', 'Spending_Score', 'Var_1'], drop_first=True)
+
+# Scale the data
+scaler = StandardScaler()
+df_scaled = scaler.fit_transform(df_processed)
+
+# Display the first few rows of the scaled data
+display(pd.DataFrame(df_scaled, columns=df_processed.columns).head())
+
+#Determine optical k (elbow method)
+
+inertia=[]
+k_range=range(1,11)
+for k in k_range:
+  kmeans=KMeans(n_clusters=k,random_state=42, n_init=10)
+  kmeans.fit(df_scaled)
+  inertia.append(kmeans.inertia_)
+
+plt.figure(figsize=(8,4))
+plt.plot(k_range,inertia,'bx-')
+plt.xlabel('k')
+plt.ylabel('inertia')
+plt.title('Elbow Method')
+plt.show()
+
+#Perform KMeans Clustering
+
+optimal_k=5
+kmeans=KMeans(n_clusters=optimal_k,random_state=42, n_init=10)
+kmeans.fit(df_scaled)
+cluster_labels=kmeans.labels_
+
+#Visualize Clusters
+
+pca= PCA(n_components=2)
+df_pca=pca.fit_transform(df_scaled)
+centroid_pca=pca.transform(kmeans.cluster_centers_)
+
+plt.figure(figsize=(10,8))
+plt.scatter(df_pca[:,0],df_pca[:,1],c=cluster_labels,cmap='rainbow')
+plt.scatter(centroid_pca[:,0],centroid_pca[:,1],marker='X',s=200,color='black')
+plt.xlabel('PC1')
+plt.ylabel('PC2')
+plt.title('K-Means Clustering')
+plt.show()
