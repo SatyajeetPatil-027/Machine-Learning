@@ -1,0 +1,118 @@
+#SVM: Support Vector Machine.
+
+
+from google.colab import drive
+drive.mount('/content/drive')
+
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+from sklearn.svm import SVC
+from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import accuracy_score, confusion_matrix
+from sklearn.model_selection import train_test_split, GridSearchCV
+from sklearn.decomposition import PCA
+
+ #Step 1: load dataset
+
+df= pd.read_csv('/content/drive/MyDrive/ML dataset/Wine dataset.csv')
+df.head()
+
+df.info()
+df.describe()
+
+#Step 2: apply preprocessing
+
+# apply the standard scaler.
+scaler = StandardScaler()
+df_scaled= scaler.fit_transform(df)
+
+df_scaled= pd.DataFrame(df_scaled, columns= df.columns)
+df_scaled.head()
+
+#Step 3: train test split
+
+X = df_scaled.drop('class', axis=1)
+y = df['class']
+
+X_train, X_test, y_train, y_test = train_test_split(X , y, test_size=0.3, random_state=42, stratify=y)
+
+#Step 4 :Train SVM with Different Kernels
+
+kernels= ['linear','poly','rbf']
+results={}
+
+for kernel in kernels:
+    svm = SVC(kernel=kernel, random_state=42)
+    svm.fit(X_train, y_train)
+    y_pred = svm.predict(X_test)
+    acc = accuracy_score(y_test, y_pred)
+    results[kernel] = acc
+    print(f'Accuracy with {kernel} kernel: {acc:.4f}')
+
+#Step 5: Visualize Support Vectors and Margins (2 features)
+
+pca= PCA(n_components=2)
+x_pca= pca.fit_transform(df_scaled.drop('class', axis=1))
+
+X_train_pca, X_test_pca, y_train_pca, y_test_pca = train_test_split(x_pca, df['class'], test_size=0.3, random_state=42, stratify=df['class'])
+
+# train svm with rbf kernel for vizualations
+svm= SVC(kernel='rbf', random_state=42)
+svm.fit(X_train_pca, y_train_pca)
+
+def plot_decision_boundary_svc(x, y, model, axes=None):
+    if axes is None:
+        fig, axes = plt.subplots(1, 1, figsize=(10, 6))
+
+    # plot data points
+    axes.scatter(x[:, 0], x[:, 1], c=y, cmap=plt.cm.coolwarm, alpha=0.8)
+
+    # Plot support vectors
+    sv = model.support_vectors_
+    axes.scatter(sv[:, 0], sv[:, 1], s=100, facecolors='none', edgecolors='k', label='Support Vectors')
+
+    # Plot decision boundary
+    x_min, x_max = x[:, 0].min() - 1, x[:, 0].max() + 1
+    y_min, y_max = x[:, 1].min() - 1, x[:, 1].max() + 1
+    xx, yy = np.meshgrid(np.arange(x_min, x_max, 0.02),
+                         np.arange(y_min, y_max, 0.02))
+    Z = model.predict(np.c_[xx.ravel(), yy.ravel()])
+    Z = Z.reshape(xx.shape)
+    axes.contourf(xx, yy, Z, cmap=plt.cm.coolwarm, alpha=0.3)
+
+    axes.set_xlabel('Principal Component 1')
+    axes.set_ylabel('Principal Component 2')
+    axes.set_title('SVM Decision Boundary v/s Support Vectors (PCA)')
+    axes.legend()
+    plt.show()
+
+plot_decision_boundary_svc(X_train_pca, y_train_pca, svm)
+
+#Step 6: Perform Hyperparameter Tuning
+
+param_grid = {
+    'C': [0.1, 1, 10],
+    'gamma': [0.1, 1, 10]
+}
+
+grid_search = GridSearchCV(SVC(kernel='rbf', random_state=42), param_grid, cv=5, scoring='accuracy')
+grid_search.fit(X_train, y_train)
+
+print("Best parameters from GridSearchCV:", grid_search.best_params_)
+best_svm = grid_search.best_estimator_
+
+# Evaluate best model on test set
+y_pred_best = best_svm.predict(X_test)
+best_acc = accuracy_score(y_test, y_pred_best)
+print(f"Accuracy of best SVM model after hyperparameter tuning: {best_acc:.4f}")
+
+# Confusion matrix
+cm = confusion_matrix(y_test, y_pred_best)
+sns.heatmap(cm, annot=True, fmt='d', cmap='Blues')
+plt.title('Confusion Matrix - Best SVM Model')
+plt.xlabel('Predicted')
+plt.ylabel('Actual')
+plt.show()
